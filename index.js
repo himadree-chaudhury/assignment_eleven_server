@@ -1,13 +1,19 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const corsOptions = {
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true,
+  optionSuccessStatus: 200,
+};
+
 // label: Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // label: MongoDB Connection
@@ -41,6 +47,22 @@ async function run() {
     app.get("/cars", async (req, res) => {
       const cars = carCollection.find();
       const result = await cars.toArray();
+      res.send(result);
+    });
+
+    // label : Get A Single Car
+    app.get("/cars/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carCollection.findOne(query);
+      res.send(result);
+    });
+
+    // label : Get User Added Car
+    app.get("/mycars/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { addedBy: email };
+      const result = await carCollection.find(query).toArray();
       res.send(result);
     });
 
