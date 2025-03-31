@@ -30,14 +30,26 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
-      );
+    );
 
-      //   label: Database Connection
-      const database = client.db(process.env.DB_NAME)
+    //   label: Database Connection
+    const database = client.db(process.env.DB_NAME);
+    const carCollection = database.collection("cars");
 
+    // label : Cars Routes
+    // label : Get All Cars
+    app.get("/cars", async (req, res) => {
+      const cars = carCollection.find();
+      const result = await cars.toArray();
+      res.send(result);
+    });
 
-
-
+    // label : Add A Car
+    app.post("/cars", async (req, res) => {
+      const car = req.body;
+      const result = await carCollection.insertOne(car);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -47,7 +59,7 @@ run().catch(console.dir);
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Welcome to the DriveXpress server!");
+  res.send("Welcome to the driveXpress server!");
 });
 
 // Start server
