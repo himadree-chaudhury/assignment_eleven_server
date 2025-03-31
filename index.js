@@ -41,6 +41,7 @@ async function run() {
     //   label: Database Connection
     const database = client.db(process.env.DB_NAME);
     const carCollection = database.collection("cars");
+    const bookingsCollection = database.collection("bookings");
 
     // label : Cars Routes
     // label : Get All Cars
@@ -84,6 +85,23 @@ async function run() {
       const result = await carCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
+
+    // label : Bookings Routes
+    // label : Get All Bookings
+        app.get("/bookings", async (req, res) => {
+          const bookings = bookingsCollection.find();
+          const result = await bookings.toArray();
+          res.send(result);
+        });
+    
+    // label : Book A Car
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
