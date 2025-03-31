@@ -72,6 +72,18 @@ async function run() {
       const result = await carCollection.insertOne(car);
       res.send(result);
     });
+
+    // label : Update A Car
+    app.patch("/cars/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedCar = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updatedCar,
+      };
+      const result = await carCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
