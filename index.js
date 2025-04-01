@@ -51,6 +51,13 @@ async function run() {
       res.send(result);
     });
 
+    // label : Get Recent Added Cars
+    app.get("/recentcars", async (req, res) => {
+      const cars = carCollection.find().sort({ dateAdded: -1 }).limit(8);
+      const result = await cars.toArray();
+      res.send(result);
+    });
+
     // label : Get A Single Car
     app.get("/cars/:id", async (req, res) => {
       const id = req.params.id;
