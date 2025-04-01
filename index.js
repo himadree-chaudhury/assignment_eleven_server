@@ -59,7 +59,7 @@ async function run() {
       res.send(result);
     });
 
-    // label : Get User Added Car
+    // label : Get User Specific Added Car
     app.get("/mycars/:email", async (req, res) => {
       const email = req.params.email;
       const query = { addedBy: email };
@@ -91,6 +91,14 @@ async function run() {
     app.get("/bookings", async (req, res) => {
       const bookings = bookingsCollection.find();
       const result = await bookings.toArray();
+      res.send(result);
+    });
+
+    // label : Get User Specific Booked Car
+    app.get("/bookings/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { bookedBy: email };
+      const result = await bookingsCollection.find(query).toArray();
       res.send(result);
     });
 
