@@ -88,20 +88,25 @@ async function run() {
 
     // label : Bookings Routes
     // label : Get All Bookings
-        app.get("/bookings", async (req, res) => {
-          const bookings = bookingsCollection.find();
-          const result = await bookings.toArray();
-          res.send(result);
-        });
-    
+    app.get("/bookings", async (req, res) => {
+      const bookings = bookingsCollection.find();
+      const result = await bookings.toArray();
+      res.send(result);
+    });
+
     // label : Book A Car
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
+
+      // label : Update Booking Count
+      const updateDoc = {
+        $inc: { rent_count: 1 },
+      };
+      const filter = { _id: new ObjectId(booking.carID) };
+      await carCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
-
-
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
