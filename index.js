@@ -115,6 +115,18 @@ async function run() {
       await carCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
+
+    // label : Update Booking Status
+    app.patch("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedBooking = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updatedBooking,
+      };
+      const result = await bookingsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
