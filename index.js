@@ -7,16 +7,22 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://drivexpress-himadree.web.app/",
+  ],
   credentials: true,
   optionSuccessStatus: 200,
 };
 
-// label: Middleware
+// label : Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// label: MongoDB Connection
+// label : JWT Token Verification Middleware
+
+// label : MongoDB Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.lhej2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -42,6 +48,12 @@ async function run() {
     const database = client.db(process.env.DB_NAME);
     const carCollection = database.collection("cars");
     const bookingsCollection = database.collection("bookings");
+
+    // label : JWT Token Generate
+    // app.post("jwt", async (req, res) => {
+    //     const email = req.body;
+    //     const to
+    // })
 
     // label : Cars Routes
     // label : Get All Cars
@@ -117,6 +129,14 @@ async function run() {
       res.send(result);
     });
 
+    // label : Get User Specific Booked Car
+    app.get("/requests/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { addedBy: email };
+      const result = await bookingsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // label : Book A Car
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
@@ -131,7 +151,7 @@ async function run() {
       res.send(result);
     });
 
-    // label : Update Booking Status
+    // label : Update Booking Count Status
     app.patch("/bookings/:id", async (req, res) => {
       const id = req.params.id;
       const updatedBooking = req.body;
@@ -147,6 +167,7 @@ async function run() {
     // await client.close();
   }
 }
+
 run().catch(console.dir);
 
 // Routes
