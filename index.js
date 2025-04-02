@@ -1,6 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
@@ -10,17 +12,31 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://drivexpress-himadree.web.app/",
+    "https://drivexpress-himadree.web.app",
   ],
   credentials: true,
-  optionSuccessStatus: 200,
+  optionalSuccessStatus: 200,
 };
 
 // label : Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 // label : JWT Token Verification Middleware
+const verifyJWTToken = (req, res, next) => {
+  const token = req.cookies?.driveXpressAccess;
+  if (!token) {
+    return res.status(401).send({ massage: "Unauthorize Access" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+    if (error) {
+      return res.status(400).send({ massage: "Bad Request" });
+    }
+    req.user = decoded;
+  });
+  next();
+};
 
 // label : MongoDB Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.lhej2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -37,12 +53,12 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.connect();
+    // // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
 
     //   label: Database Connection
     const database = client.db(process.env.DB_NAME);
@@ -50,16 +66,37 @@ async function run() {
     const bookingsCollection = database.collection("bookings");
 
     // label : JWT Token Generate
-    // app.post("jwt", async (req, res) => {
-    //     const email = req.body;
-    //     const to
-    // })
+    app.post("/jwt", async (req, res) => {
+      const email = req.body;
+      console.log(email);
+      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1m",
+      });
+      res
+        .cookie("driveXpressAccess", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+
+    // label : Clear Cookie On Logout
+    app.get("/logout", async (req, res) => {
+      res
+        .clearCookie("driveXpressAccess", {
+          maxAge: 0,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
 
     // label : Cars Routes
     // label : Get All Cars
     // In the cars routes section, replace the existing /cars endpoint with this:
 
-    // label : Get All Cars with pagination, search, and sorting
+    // label : Get All Cars
     app.get("/cars", async (req, res) => {
       try {
         const { page = 1, limit = 3, sort = "newest", search = "" } = req.query;
@@ -142,8 +179,15 @@ async function run() {
     });
 
     // label : Get User Specific Added Car
-    app.get("/mycars/:email", async (req, res) => {
+    app.get("/mycars/:email", verifyJWTToken, async (req, res) => {
+      const decodedEmail = req.user?.email;
       const email = req.params.email;
+
+      // label : Verify Specific User
+      if (decodedEmail !== email) {
+        return res.status(403).send({ massage: "Forbidden Access" });
+      }
+
       const query = { addedBy: email };
       const result = await carCollection.find(query).toArray();
       res.send(result);
@@ -185,16 +229,30 @@ async function run() {
     });
 
     // label : Get User Specific Booked Car
-    app.get("/bookings/:email", async (req, res) => {
+    app.get("/bookings/:email", verifyJWTToken, async (req, res) => {
       const email = req.params.email;
+      const decodedEmail = req.user?.email;
+
+      // label : Verify Specific User
+      if (decodedEmail !== email) {
+        return res.status(403).send({ massage: "Forbidden Access" });
+      }
+
       const query = { bookedBy: email };
       const result = await bookingsCollection.find(query).toArray();
       res.send(result);
     });
 
     // label : Get User Specific Booked Car
-    app.get("/requests/:email", async (req, res) => {
+    app.get("/requests/:email", verifyJWTToken, async (req, res) => {
       const email = req.params.email;
+      const decodedEmail = req.user?.email;
+
+      // label : Verify Specific User
+      if (decodedEmail !== email) {
+        return res.status(403).send({ massage: "Forbidden Access" });
+      }
+
       const query = { addedBy: email };
       const result = await bookingsCollection.find(query).toArray();
       res.send(result);
