@@ -57,11 +57,74 @@ async function run() {
 
     // label : Cars Routes
     // label : Get All Cars
+    // In the cars routes section, replace the existing /cars endpoint with this:
+
+    // label : Get All Cars with pagination, search, and sorting
     app.get("/cars", async (req, res) => {
-      const cars = carCollection.find();
-      const result = await cars.toArray();
-      res.send(result);
+      try {
+        const { page = 1, limit = 3, sort = "newest", search = "" } = req.query;
+
+        // Build query for search
+        const query = {};
+        if (search.trim()) {
+          query.$or = [
+            { name: { $regex: search, $options: "i" } },
+            { type: { $regex: search, $options: "i" } },
+            { location: { $regex: search, $options: "i" } },
+          ];
+        }
+
+        // Build sort options
+        let sortOption = {};
+        switch (sort) {
+          case "newest":
+            sortOption = { dateAdded: -1 };
+            break;
+          case "oldest":
+            sortOption = { dateAdded: 1 };
+            break;
+          case "price-low":
+            sortOption = { price: 1 };
+            break;
+          case "price-high":
+            sortOption = { price: -1 };
+            break;
+          default:
+            sortOption = { dateAdded: -1 };
+        }
+
+        // Calculate pagination
+        const pageNumber = parseInt(page);
+        const limitNumber = parseInt(limit);
+        const skip = (pageNumber - 1) * limitNumber;
+
+        // Get total count for pagination
+        const totalCount = await carCollection.countDocuments(query);
+
+        // Get paginated results
+        const cars = await carCollection
+          .find(query)
+          .sort(sortOption)
+          .skip(skip)
+          .limit(limitNumber)
+          .toArray();
+
+        res.send({
+          success: true,
+          cars,
+          totalCount,
+          totalPages: Math.ceil(totalCount / limitNumber),
+          currentPage: pageNumber,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: error,
+        });
+      }
     });
+
+    // Keep all your other existing routes as they are
 
     // label : Get Recent Added Cars
     app.get("/recentcars", async (req, res) => {
