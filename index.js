@@ -29,13 +29,16 @@ const verifyJWTToken = (req, res, next) => {
   if (!token) {
     return res.status(401).send({ massage: "Unauthorize Access" });
   }
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
-    if (error) {
-      return res.status(400).send({ massage: "Bad Request" });
-    }
-    req.user = decoded;
-  });
-  next();
+  if (token) {
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+      if (error) {
+        console.log(error);
+        return res.status(400).send({ massage: "Bad Request" });
+      }
+      req.user = decoded;
+      next();
+    });
+  }
 };
 
 // label : MongoDB Connection
@@ -68,9 +71,8 @@ async function run() {
     // label : JWT Token Generate
     app.post("/jwt", async (req, res) => {
       const email = req.body;
-      console.log(email);
       const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1m",
+        expiresIn: "5d",
       });
       res
         .cookie("driveXpressAccess", token, {
@@ -98,67 +100,60 @@ async function run() {
 
     // label : Get All Cars
     app.get("/cars", async (req, res) => {
-      try {
-        const { page = 1, limit = 3, sort = "newest", search = "" } = req.query;
+      const { page = 1, limit = 3, sort = "newest", search = "" } = req.query;
 
-        // Build query for search
-        const query = {};
-        if (search.trim()) {
-          query.$or = [
-            { name: { $regex: search, $options: "i" } },
-            { type: { $regex: search, $options: "i" } },
-            { location: { $regex: search, $options: "i" } },
-          ];
-        }
-
-        // Build sort options
-        let sortOption = {};
-        switch (sort) {
-          case "newest":
-            sortOption = { dateAdded: -1 };
-            break;
-          case "oldest":
-            sortOption = { dateAdded: 1 };
-            break;
-          case "price-low":
-            sortOption = { price: 1 };
-            break;
-          case "price-high":
-            sortOption = { price: -1 };
-            break;
-          default:
-            sortOption = { dateAdded: -1 };
-        }
-
-        // Calculate pagination
-        const pageNumber = parseInt(page);
-        const limitNumber = parseInt(limit);
-        const skip = (pageNumber - 1) * limitNumber;
-
-        // Get total count for pagination
-        const totalCount = await carCollection.countDocuments(query);
-
-        // Get paginated results
-        const cars = await carCollection
-          .find(query)
-          .sort(sortOption)
-          .skip(skip)
-          .limit(limitNumber)
-          .toArray();
-
-        res.send({
-          success: true,
-          cars,
-          totalCount,
-          totalPages: Math.ceil(totalCount / limitNumber),
-          currentPage: pageNumber,
-        });
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: error,
-        });
+      // Build query for search
+      const query = {};
+      if (search.trim()) {
+        query.$or = [
+          { name: { $regex: search, $options: "i" } },
+          { type: { $regex: search, $options: "i" } },
+          { location: { $regex: search, $options: "i" } },
+        ];
       }
+
+      // Build sort options
+      let sortOption = {};
+      switch (sort) {
+        case "newest":
+          sortOption = { dateAdded: -1 };
+          break;
+        case "oldest":
+          sortOption = { dateAdded: 1 };
+          break;
+        case "price-low":
+          sortOption = { price: -1 };
+          break;
+        case "price-high":
+          sortOption = { price: 1 };
+          break;
+        default:
+          sortOption = { dateAdded: -1 };
+      }
+
+      // Calculate pagination
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // Get total count for pagination
+      const totalCount = await carCollection.countDocuments(query);
+
+      // Get paginated results
+      const cars = await carCollection
+        .find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNumber)
+        .toArray();
+
+      res.send({
+        success: true,
+        cars,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitNumber),
+        currentPage: pageNumber,
+      });
     });
 
     // Keep all your other existing routes as they are
@@ -180,7 +175,7 @@ async function run() {
 
     // label : Get User Specific Added Car
     app.get("/mycars/:email", verifyJWTToken, async (req, res) => {
-      const decodedEmail = req.user?.email;
+      const decodedEmail = req.user.email;
       const email = req.params.email;
 
       // label : Verify Specific User
@@ -188,9 +183,49 @@ async function run() {
         return res.status(403).send({ massage: "Forbidden Access" });
       }
 
+      const { page = 1, limit = 5, sort = "newest" } = req.query;
+
+      // Build sort options
+      let sortOption = {};
+      switch (sort) {
+        case "newest":
+          sortOption = { dateAdded: -1 };
+          break;
+        case "oldest":
+          sortOption = { dateAdded: 1 };
+          break;
+        case "price-low":
+          sortOption = { price: -1 };
+          break;
+        case "price-high":
+          sortOption = { price: 1 };
+          break;
+        default:
+          sortOption = { dateAdded: -1 };
+      }
+
+      // *Calculate Pagination
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // *Get Total Count For Pagination
       const query = { addedBy: email };
-      const result = await carCollection.find(query).toArray();
-      res.send(result);
+      const totalCount = await carCollection.countDocuments(query);
+
+      const cars = await carCollection
+        .find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNumber)
+        .toArray();
+      res.send({
+        success: true,
+        cars,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitNumber),
+        currentPage: pageNumber,
+      });
     });
 
     // label : Add A Car
@@ -231,31 +266,112 @@ async function run() {
     // label : Get User Specific Booked Car
     app.get("/bookings/:email", verifyJWTToken, async (req, res) => {
       const email = req.params.email;
-      const decodedEmail = req.user?.email;
+      const decodedEmail = req.user.email;
 
       // label : Verify Specific User
       if (decodedEmail !== email) {
         return res.status(403).send({ massage: "Forbidden Access" });
       }
 
+      const { page = 1, limit = 5, sort = "newest" } = req.query;
+
+      // *Build sort options
+      let sortOption = {};
+      switch (sort) {
+        case "newest":
+          sortOption = { dateBooked: -1 };
+          break;
+        case "oldest":
+          sortOption = { dateBooked: 1 };
+          break;
+        case "price-low":
+          sortOption = { price: -1 };
+          break;
+        case "price-high":
+          sortOption = { price: 1 };
+          break;
+        default:
+          sortOption = { dateBooked: -1 };
+      }
+
+      // *Calculate Pagination
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // *Get Total Count For Pagination
       const query = { bookedBy: email };
-      const result = await bookingsCollection.find(query).toArray();
-      res.send(result);
+      const totalCount = await bookingsCollection.countDocuments(query);
+
+      const bookings = await bookingsCollection
+        .find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNumber)
+        .toArray();
+      res.send({
+        success: true,
+        bookings,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitNumber),
+        currentPage: pageNumber,
+      });
     });
 
-    // label : Get User Specific Booked Car
+    // label : Get User Specific Car Requests
     app.get("/requests/:email", verifyJWTToken, async (req, res) => {
       const email = req.params.email;
-      const decodedEmail = req.user?.email;
+      const decodedEmail = req.user.email;
 
       // label : Verify Specific User
       if (decodedEmail !== email) {
         return res.status(403).send({ massage: "Forbidden Access" });
       }
 
+      const { page = 1, limit = 5, sort = "newest" } = req.query;
+
+      console.log(page,limit,sort);
+      // *Build sort options
+      let sortOption = {};
+      switch (sort) {
+        case "newest":
+          sortOption = { dateBooked: -1 };
+          break;
+        case "oldest":
+          sortOption = { dateBooked: 1 };
+          break;
+        case "price-low":
+          sortOption = { price: -1 };
+          break;
+        case "price-high":
+          sortOption = { price: 1 };
+          break;
+        default:
+          sortOption = { dateBooked: -1 };
+      }
+
+      // *Calculate Pagination
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // *Get Total Count For Pagination
       const query = { addedBy: email };
-      const result = await bookingsCollection.find(query).toArray();
-      res.send(result);
+      const totalCount = await bookingsCollection.countDocuments(query);
+
+      const requests = await bookingsCollection
+        .find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNumber)
+        .toArray();
+      res.send({
+        success: true,
+        requests,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitNumber),
+        currentPage: pageNumber,
+      });
     });
 
     // label : Book A Car
