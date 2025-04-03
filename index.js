@@ -100,9 +100,12 @@ async function run() {
 
     // label : Get All Cars
     app.get("/cars", async (req, res) => {
-      const { page = 1, limit = 3, sort = "newest", search = "" } = req.query;
+      const page = req.query.page;
+      const limit = req.query.limit;
+      const search = req.query.search;
+      const sort = req.query.sort;
 
-      // Build query for search
+      // *Query For Search
       const query = {};
       if (search.trim()) {
         query.$or = [
@@ -112,7 +115,7 @@ async function run() {
         ];
       }
 
-      // Build sort options
+      // *Sort Options
       let sortOption = {};
       switch (sort) {
         case "newest":
@@ -122,24 +125,22 @@ async function run() {
           sortOption = { dateAdded: 1 };
           break;
         case "price-low":
-          sortOption = { price: -1 };
+          sortOption = { price: 1 };
           break;
         case "price-high":
-          sortOption = { price: 1 };
+          sortOption = { price: -1 };
           break;
         default:
           sortOption = { dateAdded: -1 };
       }
 
-      // Calculate pagination
+      // *Calculate Pagination
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const skip = (pageNumber - 1) * limitNumber;
-
-      // Get total count for pagination
       const totalCount = await carCollection.countDocuments(query);
 
-      // Get paginated results
+      // *Get Results
       const cars = await carCollection
         .find(query)
         .sort(sortOption)
@@ -155,8 +156,6 @@ async function run() {
         currentPage: pageNumber,
       });
     });
-
-    // Keep all your other existing routes as they are
 
     // label : Get Recent Added Cars
     app.get("/recentcars", async (req, res) => {
@@ -183,9 +182,12 @@ async function run() {
         return res.status(403).send({ massage: "Forbidden Access" });
       }
 
-      const { page = 1, limit = 5, sort = "newest" } = req.query;
+      const page = req.query.page;
+      const limit = req.query.limit;
+      const sort = req.query.sort;
+      const query = { addedBy: email };
 
-      // Build sort options
+      // *Sort options
       let sortOption = {};
       switch (sort) {
         case "newest":
@@ -195,10 +197,10 @@ async function run() {
           sortOption = { dateAdded: 1 };
           break;
         case "price-low":
-          sortOption = { price: -1 };
+          sortOption = { price: 1 };
           break;
         case "price-high":
-          sortOption = { price: 1 };
+          sortOption = { price: -1 };
           break;
         default:
           sortOption = { dateAdded: -1 };
@@ -208,17 +210,16 @@ async function run() {
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const skip = (pageNumber - 1) * limitNumber;
-
-      // *Get Total Count For Pagination
-      const query = { addedBy: email };
       const totalCount = await carCollection.countDocuments(query);
 
+      // *Get Results
       const cars = await carCollection
         .find(query)
         .sort(sortOption)
         .skip(skip)
         .limit(limitNumber)
         .toArray();
+
       res.send({
         success: true,
         cars,
@@ -273,9 +274,12 @@ async function run() {
         return res.status(403).send({ massage: "Forbidden Access" });
       }
 
-      const { page = 1, limit = 5, sort = "newest" } = req.query;
+      const page = req.query.page;
+      const limit = req.query.limit;
+      const sort = req.query.sort;
+      const query = { bookedBy: email };
 
-      // *Build sort options
+      // *Sort options
       let sortOption = {};
       switch (sort) {
         case "newest":
@@ -285,10 +289,10 @@ async function run() {
           sortOption = { dateBooked: 1 };
           break;
         case "price-low":
-          sortOption = { price: -1 };
+          sortOption = { totalPrice: 1 };
           break;
         case "price-high":
-          sortOption = { price: 1 };
+          sortOption = { totalPrice: -1 };
           break;
         default:
           sortOption = { dateBooked: -1 };
@@ -298,17 +302,16 @@ async function run() {
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const skip = (pageNumber - 1) * limitNumber;
-
-      // *Get Total Count For Pagination
-      const query = { bookedBy: email };
       const totalCount = await bookingsCollection.countDocuments(query);
 
+      // *Get Results
       const bookings = await bookingsCollection
         .find(query)
         .sort(sortOption)
         .skip(skip)
         .limit(limitNumber)
         .toArray();
+
       res.send({
         success: true,
         bookings,
@@ -328,10 +331,12 @@ async function run() {
         return res.status(403).send({ massage: "Forbidden Access" });
       }
 
-      const { page = 1, limit = 5, sort = "newest" } = req.query;
+      const page = req.query.page;
+      const limit = req.query.limit;
+      const sort = req.query.sort;
+      const query = { addedBy: email };
 
-      console.log(page,limit,sort);
-      // *Build sort options
+      // *Sort options
       let sortOption = {};
       switch (sort) {
         case "newest":
@@ -341,10 +346,10 @@ async function run() {
           sortOption = { dateBooked: 1 };
           break;
         case "price-low":
-          sortOption = { price: -1 };
+          sortOption = { totalPrice: 1 };
           break;
         case "price-high":
-          sortOption = { price: 1 };
+          sortOption = { totalPrice: -1 };
           break;
         default:
           sortOption = { dateBooked: -1 };
@@ -354,11 +359,9 @@ async function run() {
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const skip = (pageNumber - 1) * limitNumber;
-
-      // *Get Total Count For Pagination
-      const query = { addedBy: email };
       const totalCount = await bookingsCollection.countDocuments(query);
 
+      // *Get Results
       const requests = await bookingsCollection
         .find(query)
         .sort(sortOption)
