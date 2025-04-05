@@ -12,9 +12,6 @@ The driveXpress server is a robust backend system designed to handle car rental 
 
 - **JWT Authentication:** Secure API communication with JSON Web Tokens (JWT).
 - **MongoDB Integration:** Stores user data, car listings, and booking details.
-- **User Authentication:** Secure login, registration, and Google authentication.
-- **Car Management:** Users can add, update, and delete cars (restricted to authenticated users).
-- **Booking System:** Users can book cars and manage their reservations.
 - **Role-based Authorization:** Ensures restricted access to certain functionalities.
 - **Search & Filter Options:** Query cars based on title, model, location, and sorting criteria.
 - **Pagination Support:** Efficient data fetching using paginated responses.
